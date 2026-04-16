@@ -43,7 +43,10 @@ namespace TransFleet.Core.Domain.ValueObjects
 
         public override int GetHashCode()
         {
-            return HashCode.Combine(Amount, Currency);
+            unchecked
+            {
+                return (Amount.GetHashCode() * 397) ^ (Currency != null ? Currency.GetHashCode() : 0);
+            }
         }
 
         public override string ToString()

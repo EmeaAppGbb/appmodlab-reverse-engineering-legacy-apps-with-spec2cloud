@@ -1,0 +1,30 @@
+=== TransFleet.Data — Entity Relationship Overview ===
+
+TransFleetDbContext (10 DbSets):
+  Vehicles, Drivers, Fleets, Clients, MaintenanceSchedules,
+  FuelTransactions, GPSPositions, HOSLogs, Geofences, WorkOrders
+
+Key Entities and Relationships:
+-------------------------------
+
+  Client (1) ---< Fleet (1) ---< Vehicle (1) ---< GPSPosition (many, 100M+ rows)
+                                    |
+                                    +---< MaintenanceSchedule
+                                    +---< FuelTransaction
+                                    +---< WorkOrder
+                                    +---> Driver (0..1, CurrentDriverId FK)
+
+  Driver (1) ---< HOSLog (many, DOT compliance tracking)
+                  Fields: DutyStatus, StartTime, EndTime, Location
+
+  Vehicle entity fields:
+    VehicleId (PK), VIN (17 chars), Make, Model, Year, LicensePlate,
+    FleetId (FK), Status (Active|Maintenance|Retired|Decommissioned),
+    OdometerReading, FuelType (Diesel|Gasoline|Electric|Hybrid),
+    AcquisitionDate, PurchasePrice, CurrentDriverId (nullable FK)
+
+  Decimal precision config (OnModelCreating):
+    Financial: 18,2 | Fuel quantities: 18,3 | GPS coords: 18,8
+
+  Connection: LocalDB\MSSQLLocalDB | Database: TransFleet
+  Lazy loading: enabled | Proxy creation: enabled

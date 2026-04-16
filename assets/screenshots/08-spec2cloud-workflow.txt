@@ -1,0 +1,39 @@
+=== Spec2Cloud Reverse Engineering Workflow ===
+
+Phase 1: Explore Codebase
+  Analyze TransFleet.sln structure, identify 5 projects
+  Map domain: fleet management, DOT compliance, telematics
+
+Phase 2: Static Analysis
+  Dependency mapping between projects
+  Pattern detection: Repository, Specification, DDD, Adapter
+  Complexity assessment: 500-line services, nested rules
+
+Phase 3: API Contract Extraction
+  Extract OpenAPI specs from 8 Web API controllers
+  Document WCF service contracts (ITelematicsService)
+  Map request/response models
+
+Phase 4: Data Model Reverse Engineering
+  Analyze 10 core entities from EF6 DbContext
+  Map relationships: Client -> Fleet -> Vehicle -> GPS/Maintenance/Fuel
+  Document decimal precision and constraints
+
+Phase 5: Business Rules Extraction
+  VehicleService: 7 creation rules, 6 assignment checks, health scoring
+  ComplianceService: DOT HOS limits (11hr/14hr/30min/60-70hr)
+  FuelService: Transaction validation + fraud detection
+  MaintenanceService: Interval scheduling + overdue detection
+
+Phase 6: Integration Mapping
+  WCF: TelematicsService (device communication)
+  Adapters: FuelCardAdapter, DOTReportingAdapter
+  External: FMCSA ELD reporting, fuel card processor
+
+Phase 7: Bounded Context Discovery
+  Vehicle Management | Maintenance Scheduling | DOT Compliance
+  Fuel Management | Geofencing | Driver Management
+
+Phase 8-9: Review + Blueprint Assembly
+  Validate specs, create modernization strategy
+  Target: .NET 9 microservices on Azure Container Apps

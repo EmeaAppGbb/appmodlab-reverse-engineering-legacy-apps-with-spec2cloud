@@ -5,7 +5,6 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace TransFleet.Data.Entities
 {
     [Table("GPSPositions")]
-    [Index("VehicleId", "Timestamp")]
     public class GPSPosition
     {
         [Key]

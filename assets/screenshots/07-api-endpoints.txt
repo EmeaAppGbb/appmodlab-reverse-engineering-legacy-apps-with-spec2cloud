@@ -1,0 +1,35 @@
+=== TransFleet.WebApi — REST API Endpoints ===
+
+ComplianceController [RoutePrefix: api/compliance]
+  GET  /api/compliance/driver/{driverId}/check         Check driver compliance
+  GET  /api/compliance/driver/{driverId}/report         Get compliance report
+  GET  /api/compliance/driver/{driverId}/remaining      Get remaining hours
+  GET  /api/compliance/driver/{driverId}/violations     List violations
+  POST /api/compliance/driver/{driverId}/dutystatus     Record duty status
+
+VehiclesController [RoutePrefix: api/vehicles]
+  GET    /api/vehicles                                  List all vehicles
+  GET    /api/vehicles/{id}                             Get vehicle details
+  POST   /api/vehicles                                  Create new vehicle
+  GET    /api/vehicles/{id}/health                      Get health report
+  GET    /api/vehicles/{id}/utilization                 Get utilization report
+
+DriversController [RoutePrefix: api/drivers]
+  CRUD operations for driver management
+
+FleetsController [RoutePrefix: api/fleets]
+  Fleet management and assignment
+
+FuelController [RoutePrefix: api/fuel]
+  POST /api/fuel/transactions                           Process fuel transaction
+  GET  /api/fuel/efficiency/vehicle/{id}                Get fuel efficiency
+
+MaintenanceController [RoutePrefix: api/maintenance]
+  GET  /api/maintenance/schedules/overdue/fleet/{id}    Overdue maintenance
+  Work order lifecycle management
+
+GeofencesController [RoutePrefix: api/geofences]
+  Geofence management and alert configuration
+
+GPSController [RoutePrefix: api/gps]
+  GPS position tracking endpoints

@@ -1,0 +1,26 @@
+=== TransFleet.WcfServices/ITelematicsService.cs ===
+
+[ServiceContract(Namespace = "http://transfleet.com/telematics")]
+public interface ITelematicsService
+{
+    [OperationContract]
+    void ReceiveVehicleData(VehicleTelematicsData data);
+
+    [OperationContract]
+    VehicleStatus GetVehicleStatus(int vehicleId);
+
+    [OperationContract]
+    void SendCommand(int vehicleId, VehicleCommand command);
+}
+
+[DataContract] VehicleTelematicsData:
+  VehicleId, Latitude, Longitude, Speed, Heading, Timestamp,
+  OdometerReading, FuelLevel, EngineTemperature, IgnitionOn
+
+[DataContract] VehicleCommand:
+  CommandType: DisableEngine | LockDoors | FlashLights
+  Parameters (dictionary), IssueTime
+
+[DataContract] VehicleStatus:
+  VehicleId, Status, LastKnownLatitude/Longitude,
+  LastContactTime, IsOnline

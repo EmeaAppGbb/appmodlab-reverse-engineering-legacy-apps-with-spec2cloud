@@ -1,0 +1,39 @@
+=== TransFleet.Core/Services/VehicleService.cs (excerpt) ===
+
+public class VehicleService : IVehicleService
+{
+    private readonly IRepository<Vehicle> _vehicleRepository;
+    private readonly IRepository<Driver> _driverRepository;
+    private readonly IRepository<MaintenanceSchedule> _maintenanceRepository;
+    private readonly IRepository<GPSPosition> _gpsRepository;
+    private readonly IRepository<FuelTransaction> _fuelRepository;
+    private readonly IRepository<WorkOrder> _workOrderRepository;
+    private readonly IUnitOfWork _unitOfWork;
+
+    // CreateVehicle — 7 validation rules:
+    //   1. VIN uniqueness
+    //   2. VIN format (17 chars)
+    //   3. License plate uniqueness within fleet
+    //   4. Year range validation (1900-next year)
+    //   5. Odometer non-negative
+    //   6. Valid fuel type
+    //   7. Fleet existence check
+
+    // AssignDriver — 6 qualification checks:
+    //   1. Vehicle exists and is active
+    //   2. Driver exists and is active
+    //   3. Vehicle not already assigned
+    //   4. Driver CDL license not expired
+    //   5. Driver medical certificate not expired
+    //   6. Vehicle not in maintenance
+
+    // GetVehicleHealthReport — composite scoring:
+    //   - Base score: 100
+    //   - Overdue maintenance: -15 per item
+    //   - Open work orders: -10 per high priority, -5 per normal
+
+    // CalculateDistance — Haversine formula for GPS coordinates
+    // GetUtilizationReport — miles, fuel, MPG, utilization %
+}
+
+Total: ~500 lines | 15 public methods | 5 private helpers

@@ -1,0 +1,41 @@
+=== TransFleet — Architecture Layers ===
+
+  +------------------------------------------------------+
+  |                  TransFleet.WebApi                    |
+  |  ASP.NET Web API 2 | .NET Framework 4.7.2            |
+  |  8 Controllers: Vehicles, Drivers, Fleets,           |
+  |  Compliance, Fuel, Maintenance, Geofences, GPS       |
+  |  Config: Web.config (conn strings, endpoints)        |
+  +------------------------------------------------------+
+                          |
+  +------------------------------------------------------+
+  |                  TransFleet.Core                      |
+  |  Business Logic Layer                                 |
+  |  Services: Vehicle, Compliance, Fuel, Maintenance,   |
+  |            Geofence, Driver                           |
+  |  Domain: ValueObjects (Money, Distance, Duration)    |
+  |          Rules (Maintenance, DOTCompliance, FuelCard) |
+  |  Specifications: Generic Spec<T> with And/Or/Not     |
+  |  Integration: FuelCardAdapter, DOTReportingAdapter   |
+  +------------------------------------------------------+
+                          |
+  +------------------------------------------------------+
+  |                  TransFleet.Data                      |
+  |  Entity Framework 6 | Database-First Style           |
+  |  10 Entities | Repository<T> | UnitOfWork             |
+  |  TransFleetDbContext (LazyLoading, ProxyCreation)    |
+  +------------------------------------------------------+
+                          |
+  +------------------------------------------------------+
+  |              TransFleet.WcfServices                   |
+  |  WCF Service Layer                                    |
+  |  ITelematicsService: ReceiveData, GetStatus, SendCmd |
+  |  DataContracts: VehicleTelematicsData, VehicleCommand|
+  +------------------------------------------------------+
+                          |
+  +------------------------------------------------------+
+  |                TransFleet.Jobs                        |
+  |  Background Processing (Quartz.NET / Hangfire)       |
+  |  MaintenanceAlertJob (6hr) | ComplianceCheckJob (1d) |
+  |  DataArchivalJob (90-day GPS archive)                |
+  +------------------------------------------------------+

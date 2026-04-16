@@ -1,0 +1,57 @@
+appmodlab-reverse-engineering-legacy-apps-with-spec2cloud/
+|
++-- APPMODLAB.MD               Lab metadata (frontmatter)
++-- README.md                  Full lab walkthrough & instructions
++-- ARCHITECTURE.md            Code structure summary
++-- BUILD.md                   Build and development guide
++-- SPEC2CLOUD.MD              Spec2Cloud methodology doc
++-- TransFleet.sln             Visual Studio solution (5 projects)
+|
++-- TransFleet.WebApi/         ASP.NET Web API 2 (.NET 4.7.2)
+|   +-- Controllers/
+|   |   +-- VehiclesController.cs
+|   |   +-- DriversController.cs
+|   |   +-- FleetsController.cs
+|   |   +-- ComplianceController.cs
+|   |   +-- FuelController.cs
+|   |   +-- MaintenanceController.cs
+|   |   +-- GeofencesController.cs
+|   |   +-- GPSController.cs
+|   +-- Web.config
+|
++-- TransFleet.Core/           Business logic layer
+|   +-- Services/
+|   |   +-- VehicleService.cs       (~500 lines, 20+ business rules)
+|   |   +-- ComplianceService.cs    (DOT HOS regulations)
+|   |   +-- FuelService.cs          (Transaction + fraud detection)
+|   |   +-- MaintenanceService.cs   (Scheduling + work orders)
+|   |   +-- GeofenceService.cs      (Spatial calculations)
+|   |   +-- DriverService.cs        (License/cert validation)
+|   +-- Domain/
+|   |   +-- ValueObjects/           Money, Distance, Duration
+|   |   +-- Rules/                  MaintenanceRules, DOTComplianceRules, FuelCardValidationRules
+|   +-- Specifications/
+|   |   +-- Specification.cs        Generic Spec pattern (And/Or/Not)
+|   |   +-- VehicleSpecifications.cs
+|   |   +-- DriverSpecifications.cs
+|   +-- Integration/
+|       +-- FuelCardAdapter.cs      WCF fuel card processor
+|       +-- DOTReportingAdapter.cs  FMCSA ELD reporting
+|
++-- TransFleet.Data/           Data access layer (EF6)
+|   +-- Entities/
+|   |   +-- Vehicle.cs, Driver.cs, Fleet.cs, Client.cs
+|   |   +-- FuelTransaction.cs, GPSPosition.cs, HOSLog.cs
+|   |   +-- MaintenanceSchedule.cs, Geofence.cs, WorkOrder.cs
+|   +-- Repositories/
+|   +-- TransFleetDbContext.cs  (10 DbSets, decimal precision config)
+|   +-- UnitOfWork.cs
+|
++-- TransFleet.WcfServices/    WCF integration layer
+|   +-- ITelematicsService.cs  (ReceiveVehicleData, GetVehicleStatus, SendCommand)
+|   +-- TelematicsService.cs
+|
++-- TransFleet.Jobs/           Background processing
+    +-- MaintenanceAlertJob.cs  (every 6 hours)
+    +-- ComplianceCheckJob.cs   (daily)
+    +-- DataArchivalJob.cs      (90-day archive)

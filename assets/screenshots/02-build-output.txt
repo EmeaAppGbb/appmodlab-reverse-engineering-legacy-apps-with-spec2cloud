@@ -1,0 +1,20 @@
+PS> dotnet build TransFleet.sln --configuration Release
+MSBuild version 17.14.40 for .NET Framework
+
+  Determining projects to restore...
+  Restored TransFleet.Data.csproj (in 422 ms).
+  Restored TransFleet.Core.csproj (in 422 ms).
+  Restored TransFleet.WcfServices.csproj (in 422 ms).
+  Restored TransFleet.Jobs.csproj (in 422 ms).
+  Restored TransFleet.WebApi.csproj (in 426 ms).
+
+  TransFleet.Data    -> bin\Release\net472\TransFleet.Data.dll
+  TransFleet.Core    -> bin\Release\net472\TransFleet.Core.dll
+  TransFleet.WcfServices -> bin\Release\net472\TransFleet.WcfServices.dll
+  TransFleet.Jobs    -> bin\Release\net472\TransFleet.Jobs.dll
+  TransFleet.WebApi  -> bin\Release\net472\TransFleet.WebApi.dll
+
+Build succeeded.
+    0 Error(s)
+
+Time Elapsed 00:00:03.84
