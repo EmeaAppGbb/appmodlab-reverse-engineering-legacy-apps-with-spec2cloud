@@ -1,0 +1,1995 @@
+openapi: 3.0.3
+info:
+  title: TransFleet Fleet Management API
+  description: |
+    REST API and WCF service contracts for the TransFleet fleet management system.
+    Built on ASP.NET Web API 2 (.NET Framework 4.7.2) with WCF telematics services.
+
+    ## Architecture
+    - **REST API** (TransFleet.WebApi): 8 controllers covering drivers, vehicles, fleets,
+      GPS tracking, geofences, fuel management, maintenance, and compliance.
+    - **WCF Service** (TransFleet.WcfServices): ITelematicsService for real-time vehicle
+      telematics data ingestion and command dispatch.
+
+    ## Authentication
+    No authentication is currently enforced at the controller level.
+
+    ## Error Handling
+    All endpoints follow a consistent pattern:
+    - `400 Bad Request` for validation failures or business rule violations (InvalidOperationException)
+    - `404 Not Found` when a requested resource does not exist
+    - `500 Internal Server Error` for unhandled exceptions
+  version: 1.0.0
+  contact:
+    name: TransFleet Engineering
+
+servers:
+  - url: /
+    description: Application root
+
+tags:
+  - name: Drivers
+    description: Driver CRUD operations
+  - name: Vehicles
+    description: Vehicle lifecycle, driver assignment, and reporting
+  - name: Fleets
+    description: Fleet CRUD operations
+  - name: GPS
+    description: GPS position tracking
+  - name: Geofences
+    description: Geofence management and violation detection
+  - name: Fuel
+    description: Fuel transactions, efficiency, and cost analysis
+  - name: Maintenance
+    description: Maintenance schedules and work orders
+  - name: Compliance
+    description: HOS (Hours of Service) compliance and duty status
+  - name: Telematics (WCF)
+    description: |
+      WCF SOAP service (ITelematicsService) for real-time vehicle telematics.
+      Original transport: net.tcp / basicHttpBinding.
+      Documented here as REST-style for reference; actual invocation uses SOAP.
+
+# ──────────────────────────────────────────────────────────────────────────────
+# PATHS
+# ──────────────────────────────────────────────────────────────────────────────
+paths:
+
+  # ── Drivers ────────────────────────────────────────────────────────────────
+  /api/drivers:
+    get:
+      tags: [Drivers]
+      operationId: GetAllDrivers
+      summary: List all drivers
+      responses:
+        '200':
+          description: Array of all drivers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Driver'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      tags: [Drivers]
+      operationId: CreateDriver
+      summary: Create a new driver
+      description: |
+        **Business rules:**
+        - `CreatedDate` is set to UTC now server-side (any client value is overwritten).
+        - `Status` is forced to `"Active"` on creation.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Driver'
+      responses:
+        '201':
+          description: Driver created
+          headers:
+            Location:
+              schema:
+                type: string
+              description: URI of the newly created driver
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Driver'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/drivers/{id}:
+    get:
+      tags: [Drivers]
+      operationId: GetDriver
+      summary: Get a driver by ID
+      parameters:
+        - $ref: '#/components/parameters/IntId'
+      responses:
+        '200':
+          description: Driver found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Driver'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    put:
+      tags: [Drivers]
+      operationId: UpdateDriver
+      summary: Update an existing driver
+      description: |
+        **Business rules:**
+        - `id` path parameter must match `driver.DriverId` in the body (400 on mismatch).
+        - `ModifiedDate` is set to UTC now server-side.
+      parameters:
+        - $ref: '#/components/parameters/IntId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Driver'
+      responses:
+        '200':
+          description: Driver updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Driver'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # ── Vehicles ───────────────────────────────────────────────────────────────
+  /api/vehicles:
+    post:
+      tags: [Vehicles]
+      operationId: CreateVehicle
+      summary: Create a new vehicle
+      description: |
+        **Business rules:**
+        - Delegates to `IVehicleService.CreateVehicle` which may enforce VIN uniqueness
+          and fleet existence checks.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Vehicle'
+      responses:
+        '201':
+          description: Vehicle created
+          headers:
+            Location:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Vehicle'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/vehicles/{id}:
+    get:
+      tags: [Vehicles]
+      operationId: GetVehicle
+      summary: Get a vehicle by ID
+      parameters:
+        - $ref: '#/components/parameters/IntId'
+      responses:
+        '200':
+          description: Vehicle found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Vehicle'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    put:
+      tags: [Vehicles]
+      operationId: UpdateVehicle
+      summary: Update an existing vehicle
+      description: |
+        **Business rules:**
+        - `id` path parameter must match `vehicle.VehicleId` (400 on mismatch).
+        - Service layer may validate fleet assignment and status transitions.
+      parameters:
+        - $ref: '#/components/parameters/IntId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Vehicle'
+      responses:
+        '200':
+          description: Vehicle updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Vehicle'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      tags: [Vehicles]
+      operationId: DeactivateVehicle
+      summary: Deactivate (soft-delete) a vehicle
+      description: |
+        **Business rules:**
+        - Does not physically delete; changes vehicle status via `IVehicleService.DeactivateVehicle`.
+        - Service may reject if vehicle has an active driver assignment or open work orders.
+      parameters:
+        - $ref: '#/components/parameters/IntId'
+        - name: reason
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Reason for deactivation
+      responses:
+        '200':
+          description: Vehicle deactivated
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/vehicles/fleet/{fleetId}:
+    get:
+      tags: [Vehicles]
+      operationId: GetVehiclesByFleet
+      summary: List vehicles belonging to a fleet
+      parameters:
+        - name: fleetId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Array of vehicles in the fleet
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Vehicle'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/vehicles/status/{status}:
+    get:
+      tags: [Vehicles]
+      operationId: GetVehiclesByStatus
+      summary: List vehicles filtered by status
+      parameters:
+        - name: status
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [Active, Maintenance, Retired, Decommissioned]
+      responses:
+        '200':
+          description: Array of vehicles matching the status
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Vehicle'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/vehicles/{vehicleId}/assign-driver/{driverId}:
+    post:
+      tags: [Vehicles]
+      operationId: AssignDriver
+      summary: Assign a driver to a vehicle
+      description: |
+        **Business rules:**
+        - Service layer enforces that a driver cannot be assigned to multiple vehicles
+          simultaneously and the vehicle must be in Active status.
+      parameters:
+        - name: vehicleId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: driverId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Driver assigned successfully
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/vehicles/{vehicleId}/unassign-driver:
+    post:
+      tags: [Vehicles]
+      operationId: UnassignDriver
+      summary: Remove driver assignment from a vehicle
+      parameters:
+        - name: vehicleId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Driver unassigned successfully
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/vehicles/{id}/health:
+    get:
+      tags: [Vehicles]
+      operationId: GetVehicleHealthReport
+      summary: Get vehicle health report
+      description: |
+        Returns a composite health assessment for the vehicle including maintenance
+        status, mileage, and upcoming service needs.
+      parameters:
+        - $ref: '#/components/parameters/IntId'
+      responses:
+        '200':
+          description: Health report
+          content:
+            application/json:
+              schema:
+                type: object
+                description: Vehicle health report (schema defined by IVehicleService)
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/vehicles/{id}/utilization:
+    get:
+      tags: [Vehicles]
+      operationId: GetUtilizationReport
+      summary: Get vehicle utilization report for a date range
+      parameters:
+        - $ref: '#/components/parameters/IntId'
+        - $ref: '#/components/parameters/StartDate'
+        - $ref: '#/components/parameters/EndDate'
+      responses:
+        '200':
+          description: Utilization report
+          content:
+            application/json:
+              schema:
+                type: object
+                description: Utilization metrics (schema defined by IVehicleService)
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/vehicles/{id}/maintenance-cost:
+    get:
+      tags: [Vehicles]
+      operationId: GetVehicleMaintenanceCost
+      summary: Get total maintenance cost for a vehicle over a date range
+      parameters:
+        - $ref: '#/components/parameters/IntId'
+        - $ref: '#/components/parameters/StartDate'
+        - $ref: '#/components/parameters/EndDate'
+      responses:
+        '200':
+          description: Total maintenance cost
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  totalCost:
+                    type: number
+                    format: decimal
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # ── Fleets ─────────────────────────────────────────────────────────────────
+  /api/fleets:
+    get:
+      tags: [Fleets]
+      operationId: GetAllFleets
+      summary: List all fleets
+      responses:
+        '200':
+          description: Array of all fleets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Fleet'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      tags: [Fleets]
+      operationId: CreateFleet
+      summary: Create a new fleet
+      description: |
+        **Business rules:**
+        - `CreatedDate` is set to UTC now server-side.
+        - `Status` is forced to `"Active"` on creation.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Fleet'
+      responses:
+        '201':
+          description: Fleet created
+          headers:
+            Location:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Fleet'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/fleets/{id}:
+    get:
+      tags: [Fleets]
+      operationId: GetFleet
+      summary: Get a fleet by ID
+      parameters:
+        - $ref: '#/components/parameters/IntId'
+      responses:
+        '200':
+          description: Fleet found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Fleet'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    put:
+      tags: [Fleets]
+      operationId: UpdateFleet
+      summary: Update an existing fleet
+      description: |
+        **Business rules:**
+        - `id` path parameter must match `fleet.FleetId` (400 on mismatch).
+        - `ModifiedDate` is set to UTC now server-side.
+      parameters:
+        - $ref: '#/components/parameters/IntId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Fleet'
+      responses:
+        '200':
+          description: Fleet updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Fleet'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # ── GPS ────────────────────────────────────────────────────────────────────
+  /api/gps/positions:
+    post:
+      tags: [GPS]
+      operationId: RecordPosition
+      summary: Record a GPS position
+      description: |
+        **Business rules:**
+        - `CreatedDate` and `Timestamp` are set to UTC now server-side (overwriting client values).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GPSPosition'
+      responses:
+        '200':
+          description: Position recorded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GPSPosition'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/gps/positions/vehicle/{vehicleId}:
+    get:
+      tags: [GPS]
+      operationId: GetPositions
+      summary: Get GPS position history for a vehicle
+      description: |
+        **Business rules:**
+        - Defaults to the last 24 hours if `startDate`/`endDate` are omitted.
+        - Results are ordered by timestamp ascending.
+      parameters:
+        - name: vehicleId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: startDate
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: Defaults to 24 hours ago
+        - name: endDate
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: Defaults to now
+      responses:
+        '200':
+          description: Array of GPS positions ordered by timestamp
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/GPSPosition'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/gps/positions/latest/vehicle/{vehicleId}:
+    get:
+      tags: [GPS]
+      operationId: GetLatestPosition
+      summary: Get the most recent GPS position for a vehicle
+      parameters:
+        - name: vehicleId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Latest GPS position
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GPSPosition'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # ── Geofences ──────────────────────────────────────────────────────────────
+  /api/geofences:
+    post:
+      tags: [Geofences]
+      operationId: CreateGeofence
+      summary: Create a new geofence
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Geofence'
+      responses:
+        '201':
+          description: Geofence created
+          headers:
+            Location:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Geofence'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/geofences/{id}:
+    get:
+      tags: [Geofences]
+      operationId: GetGeofence
+      summary: Get a geofence by ID
+      parameters:
+        - $ref: '#/components/parameters/IntId'
+      responses:
+        '200':
+          description: Geofence found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Geofence'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    put:
+      tags: [Geofences]
+      operationId: UpdateGeofence
+      summary: Update an existing geofence
+      description: |
+        **Business rules:**
+        - `id` path parameter must match `geofence.GeofenceId` (400 on mismatch).
+      parameters:
+        - $ref: '#/components/parameters/IntId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Geofence'
+      responses:
+        '200':
+          description: Geofence updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Geofence'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      tags: [Geofences]
+      operationId: DeleteGeofence
+      summary: Delete a geofence
+      description: |
+        **Business rules:**
+        - Service may reject deletion if the geofence has active alerts or is referenced
+          by other entities.
+      parameters:
+        - $ref: '#/components/parameters/IntId'
+      responses:
+        '200':
+          description: Geofence deleted
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/geofences/fleet/{fleetId}:
+    get:
+      tags: [Geofences]
+      operationId: GetGeofencesByFleet
+      summary: List geofences for a fleet
+      parameters:
+        - name: fleetId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Array of geofences
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Geofence'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/geofences/check/vehicle/{vehicleId}/geofence/{geofenceId}:
+    get:
+      tags: [Geofences]
+      operationId: CheckVehicleInGeofence
+      summary: Check if a vehicle is currently inside a geofence
+      description: |
+        Uses the vehicle's latest GPS position to determine containment within the
+        geofence polygon.
+      parameters:
+        - name: vehicleId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: geofenceId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Containment check result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  vehicleId:
+                    type: integer
+                  geofenceId:
+                    type: integer
+                  isInside:
+                    type: boolean
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/geofences/alerts/fleet/{fleetId}:
+    get:
+      tags: [Geofences]
+      operationId: GetGeofenceAlerts
+      summary: Get geofence violation alerts for a fleet
+      description: |
+        Checks all active geofences for the fleet and returns any current violations
+        based on latest vehicle positions.
+      parameters:
+        - name: fleetId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Array of geofence violation alerts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  description: Geofence violation alert (schema defined by IGeofenceService)
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # ── Fuel ───────────────────────────────────────────────────────────────────
+  /api/fuel/transactions:
+    post:
+      tags: [Fuel]
+      operationId: ProcessFuelTransaction
+      summary: Process a fuel transaction
+      description: |
+        **Business rules:**
+        - Validates transaction data (vehicle existence, fuel card validity).
+        - Service may flag suspicious transactions (e.g., duplicate fills, excessive gallons).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FuelTransaction'
+      responses:
+        '201':
+          description: Transaction processed
+          headers:
+            Location:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FuelTransaction'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/fuel/transactions/vehicle/{vehicleId}:
+    get:
+      tags: [Fuel]
+      operationId: GetTransactionsByVehicle
+      summary: Get fuel transactions for a vehicle in a date range
+      parameters:
+        - name: vehicleId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - $ref: '#/components/parameters/StartDate'
+        - $ref: '#/components/parameters/EndDate'
+      responses:
+        '200':
+          description: Array of fuel transactions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FuelTransaction'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/fuel/transactions/suspicious/fleet/{fleetId}:
+    get:
+      tags: [Fuel]
+      operationId: GetSuspiciousTransactions
+      summary: Get suspicious fuel transactions for a fleet
+      description: |
+        Returns transactions flagged as potentially fraudulent (unusual location,
+        excessive volume, duplicate fills, etc.).
+      parameters:
+        - name: fleetId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - $ref: '#/components/parameters/StartDate'
+        - $ref: '#/components/parameters/EndDate'
+      responses:
+        '200':
+          description: Array of suspicious fuel transactions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FuelTransaction'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/fuel/efficiency/vehicle/{vehicleId}:
+    get:
+      tags: [Fuel]
+      operationId: GetFuelEfficiencyReport
+      summary: Get fuel efficiency report for a vehicle
+      parameters:
+        - name: vehicleId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - $ref: '#/components/parameters/StartDate'
+        - $ref: '#/components/parameters/EndDate'
+      responses:
+        '200':
+          description: Fuel efficiency report
+          content:
+            application/json:
+              schema:
+                type: object
+                description: Fuel efficiency metrics (schema defined by IFuelService)
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/fuel/cost/fleet/{fleetId}:
+    get:
+      tags: [Fuel]
+      operationId: GetFleetFuelCost
+      summary: Get total fuel cost for a fleet over a date range
+      parameters:
+        - name: fleetId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - $ref: '#/components/parameters/StartDate'
+        - $ref: '#/components/parameters/EndDate'
+      responses:
+        '200':
+          description: Total fuel cost
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  fleetId:
+                    type: integer
+                  totalCost:
+                    type: number
+                    format: decimal
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # ── Maintenance ────────────────────────────────────────────────────────────
+  /api/maintenance/schedules:
+    post:
+      tags: [Maintenance]
+      operationId: CreateMaintenanceSchedule
+      summary: Create a maintenance schedule
+      description: |
+        **Business rules:**
+        - Service validates that the vehicle exists and the service type is valid.
+        - May reject if a duplicate schedule for the same service type already exists.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MaintenanceSchedule'
+      responses:
+        '201':
+          description: Schedule created
+          headers:
+            Location:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaintenanceSchedule'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/maintenance/schedules/{id}:
+    get:
+      tags: [Maintenance]
+      operationId: GetMaintenanceSchedule
+      summary: Get a maintenance schedule by ID
+      parameters:
+        - $ref: '#/components/parameters/IntId'
+      responses:
+        '200':
+          description: Schedule found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaintenanceSchedule'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    put:
+      tags: [Maintenance]
+      operationId: UpdateMaintenanceSchedule
+      summary: Update a maintenance schedule
+      description: |
+        **Business rules:**
+        - `id` path parameter must match `schedule.ScheduleId` (400 on mismatch).
+      parameters:
+        - $ref: '#/components/parameters/IntId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MaintenanceSchedule'
+      responses:
+        '200':
+          description: Schedule updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaintenanceSchedule'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/maintenance/schedules/vehicle/{vehicleId}:
+    get:
+      tags: [Maintenance]
+      operationId: GetSchedulesByVehicle
+      summary: List maintenance schedules for a vehicle
+      parameters:
+        - name: vehicleId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Array of maintenance schedules
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MaintenanceSchedule'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/maintenance/schedules/overdue/fleet/{fleetId}:
+    get:
+      tags: [Maintenance]
+      operationId: GetOverdueSchedules
+      summary: List overdue maintenance schedules for a fleet
+      description: |
+        Returns schedules that have passed their `NextServiceDate` or `NextServiceMileage`
+        without completion.
+      parameters:
+        - name: fleetId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Array of overdue maintenance schedules
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MaintenanceSchedule'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/maintenance/schedules/{id}/complete:
+    post:
+      tags: [Maintenance]
+      operationId: CompleteService
+      summary: Record completion of a scheduled service
+      description: |
+        **Business rules:**
+        - Updates `LastServiceDate` and `LastServiceMileage`, recalculates next service due.
+        - Service may reject if the schedule is already completed or cancelled.
+      parameters:
+        - $ref: '#/components/parameters/IntId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ServiceCompletionRequest'
+      responses:
+        '200':
+          description: Service completion recorded
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/maintenance/workorders:
+    post:
+      tags: [Maintenance]
+      operationId: CreateWorkOrder
+      summary: Create a new work order
+      description: |
+        **Business rules:**
+        - Service validates vehicle existence and may check for duplicate open work orders.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkOrder'
+      responses:
+        '201':
+          description: Work order created
+          headers:
+            Location:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkOrder'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/maintenance/workorders/{id}:
+    put:
+      tags: [Maintenance]
+      operationId: UpdateWorkOrder
+      summary: Update an existing work order
+      description: |
+        **Business rules:**
+        - `id` path parameter must match `workOrder.WorkOrderId` (400 on mismatch).
+        - May reject updates to completed or cancelled work orders.
+      parameters:
+        - $ref: '#/components/parameters/IntId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkOrder'
+      responses:
+        '200':
+          description: Work order updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkOrder'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/maintenance/workorders/{id}/complete:
+    post:
+      tags: [Maintenance]
+      operationId: CompleteWorkOrder
+      summary: Mark a work order as completed
+      description: |
+        **Business rules:**
+        - Records actual cost and completion notes.
+        - Sets status to Completed and records CompletedDate.
+        - May reject if already completed or cancelled.
+      parameters:
+        - $ref: '#/components/parameters/IntId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkOrderCompletionRequest'
+      responses:
+        '200':
+          description: Work order completed
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/maintenance/workorders/open/fleet/{fleetId}:
+    get:
+      tags: [Maintenance]
+      operationId: GetOpenWorkOrders
+      summary: List open work orders for a fleet
+      parameters:
+        - name: fleetId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Array of open work orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/WorkOrder'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # ── Compliance ─────────────────────────────────────────────────────────────
+  /api/compliance/driver/{driverId}/check:
+    get:
+      tags: [Compliance]
+      operationId: CheckCompliance
+      summary: Check if a driver is currently HOS-compliant
+      description: |
+        **Business rules:**
+        - Evaluates driver's Hours of Service (HOS) logs against FMCSA regulations.
+        - Defaults to current UTC time if `checkDate` is not provided.
+      parameters:
+        - name: driverId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: checkDate
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Compliance check result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  driverId:
+                    type: integer
+                  date:
+                    type: string
+                    format: date-time
+                  isCompliant:
+                    type: boolean
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/compliance/driver/{driverId}/report:
+    get:
+      tags: [Compliance]
+      operationId: GetComplianceReport
+      summary: Get HOS compliance report for a driver over a date range
+      parameters:
+        - name: driverId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - $ref: '#/components/parameters/StartDate'
+        - $ref: '#/components/parameters/EndDate'
+      responses:
+        '200':
+          description: Compliance report
+          content:
+            application/json:
+              schema:
+                type: object
+                description: HOS compliance report (schema defined by IComplianceService)
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/compliance/driver/{driverId}/remaining-hours:
+    get:
+      tags: [Compliance]
+      operationId: GetRemainingHours
+      summary: Get remaining driving hours for a driver
+      description: |
+        **Business rules:**
+        - Calculates remaining hours based on FMCSA HOS rules (11-hour driving limit,
+          14-hour on-duty window, 70-hour/8-day cycle).
+        - Defaults to current UTC time if `checkDate` is not provided.
+      parameters:
+        - name: driverId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: checkDate
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Remaining hours result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  driverId:
+                    type: integer
+                  date:
+                    type: string
+                    format: date-time
+                  remainingHours:
+                    type: number
+                    format: double
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/compliance/driver/{driverId}/violations:
+    get:
+      tags: [Compliance]
+      operationId: GetViolations
+      summary: Get HOS violations for a driver over a date range
+      parameters:
+        - name: driverId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - $ref: '#/components/parameters/StartDate'
+        - $ref: '#/components/parameters/EndDate'
+      responses:
+        '200':
+          description: Array of HOS violations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  description: HOS violation record (schema defined by IComplianceService)
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/compliance/driver/{driverId}/duty-status:
+    post:
+      tags: [Compliance]
+      operationId: RecordDutyStatus
+      summary: Record a duty status change for a driver
+      description: |
+        **Business rules:**
+        - Creates a new HOS log entry with the given duty status.
+        - Valid duty statuses: OffDuty, SleeperBerth, Driving, OnDuty.
+        - Service may reject if the status transition is invalid (e.g., Driving without a vehicle).
+      parameters:
+        - name: driverId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DutyStatusRequest'
+      responses:
+        '200':
+          description: Duty status recorded
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # ── Telematics (WCF) ──────────────────────────────────────────────────────
+  /wcf/telematics/receive-vehicle-data:
+    post:
+      tags: [Telematics (WCF)]
+      operationId: WCF_ReceiveVehicleData
+      summary: "[WCF OperationContract] Receive real-time telematics data from a vehicle"
+      description: |
+        **WCF Operation:** `ITelematicsService.ReceiveVehicleData(VehicleTelematicsData data)`
+
+        **Business rules:**
+        - Stores a new GPS position record from the telematics payload.
+        - If `OdometerReading` is provided and greater than the vehicle's current reading,
+          updates the vehicle's odometer (monotonically increasing only).
+        - Throws a fault if the vehicle ID is invalid or data processing fails.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VehicleTelematicsData'
+      responses:
+        '200':
+          description: Data received and stored successfully
+        '500':
+          description: Processing failure (SOAP Fault in WCF)
+
+  /wcf/telematics/get-vehicle-status:
+    get:
+      tags: [Telematics (WCF)]
+      operationId: WCF_GetVehicleStatus
+      summary: "[WCF OperationContract] Get current status of a vehicle"
+      description: |
+        **WCF Operation:** `ITelematicsService.GetVehicleStatus(int vehicleId)`
+
+        **Business rules:**
+        - Returns vehicle status combined with latest GPS position.
+        - `IsOnline` is `true` if the last GPS contact was within 15 minutes.
+        - Throws a fault if the vehicle is not found.
+      parameters:
+        - name: vehicleId
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Vehicle status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VehicleStatus'
+        '500':
+          description: Vehicle not found (SOAP Fault in WCF)
+
+  /wcf/telematics/send-command:
+    post:
+      tags: [Telematics (WCF)]
+      operationId: WCF_SendCommand
+      summary: "[WCF OperationContract] Send a command to a vehicle's telematics device"
+      description: |
+        **WCF Operation:** `ITelematicsService.SendCommand(int vehicleId, VehicleCommand command)`
+
+        **Business rules:**
+        - Validates vehicle existence before dispatching.
+        - Supported command types: DisableEngine, LockDoors, FlashLights, Honk, etc.
+        - Throws a fault if the vehicle is not found.
+      parameters:
+        - name: vehicleId
+          in: query
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VehicleCommand'
+      responses:
+        '200':
+          description: Command sent successfully
+        '500':
+          description: Vehicle not found or command dispatch failed (SOAP Fault in WCF)
+
+# ──────────────────────────────────────────────────────────────────────────────
+# COMPONENTS
+# ──────────────────────────────────────────────────────────────────────────────
+components:
+
+  # ── Parameters ─────────────────────────────────────────────────────────────
+  parameters:
+    IntId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+      description: Resource ID
+
+    StartDate:
+      name: startDate
+      in: query
+      required: true
+      schema:
+        type: string
+        format: date-time
+      description: Start of the date range (ISO 8601)
+
+    EndDate:
+      name: endDate
+      in: query
+      required: true
+      schema:
+        type: string
+        format: date-time
+      description: End of the date range (ISO 8601)
+
+  # ── Responses ──────────────────────────────────────────────────────────────
+  responses:
+    BadRequest:
+      description: Validation error or business rule violation
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+
+    NotFound:
+      description: Resource not found
+
+    InternalServerError:
+      description: Unhandled server error
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+              exceptionMessage:
+                type: string
+
+  # ── Schemas ────────────────────────────────────────────────────────────────
+  schemas:
+
+    Driver:
+      type: object
+      required: [firstName, lastName, licenseNumber]
+      properties:
+        driverId:
+          type: integer
+          readOnly: true
+        firstName:
+          type: string
+          maxLength: 100
+        lastName:
+          type: string
+          maxLength: 100
+        licenseNumber:
+          type: string
+          maxLength: 50
+        licenseExpiry:
+          type: string
+          format: date-time
+        cdlClass:
+          type: string
+          maxLength: 10
+          description: "CDL classification: A, B, or C"
+          enum: [A, B, C]
+        medicalCertExpiry:
+          type: string
+          format: date-time
+          nullable: true
+        status:
+          type: string
+          maxLength: 20
+          enum: [Active, OnLeave, Terminated, Suspended]
+        email:
+          type: string
+          maxLength: 100
+        phone:
+          type: string
+          maxLength: 20
+        hireDate:
+          type: string
+          format: date-time
+        terminationDate:
+          type: string
+          format: date-time
+          nullable: true
+        address:
+          type: string
+          maxLength: 200
+        city:
+          type: string
+          maxLength: 100
+        state:
+          type: string
+          maxLength: 50
+        zipCode:
+          type: string
+          maxLength: 20
+        createdDate:
+          type: string
+          format: date-time
+          readOnly: true
+        modifiedDate:
+          type: string
+          format: date-time
+          nullable: true
+          readOnly: true
+
+    Fleet:
+      type: object
+      required: [name]
+      properties:
+        fleetId:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        clientId:
+          type: integer
+        description:
+          type: string
+          maxLength: 500
+        status:
+          type: string
+          maxLength: 20
+        createdDate:
+          type: string
+          format: date-time
+          readOnly: true
+        modifiedDate:
+          type: string
+          format: date-time
+          nullable: true
+          readOnly: true
+
+    Vehicle:
+      type: object
+      required: [vin, make, model]
+      properties:
+        vehicleId:
+          type: integer
+          readOnly: true
+        vin:
+          type: string
+          maxLength: 17
+          description: Vehicle Identification Number
+        make:
+          type: string
+          maxLength: 50
+        model:
+          type: string
+          maxLength: 50
+        year:
+          type: integer
+        licensePlate:
+          type: string
+          maxLength: 20
+        fleetId:
+          type: integer
+        status:
+          type: string
+          maxLength: 20
+          enum: [Active, Maintenance, Retired, Decommissioned]
+        odometerReading:
+          type: integer
+        fuelType:
+          type: string
+          maxLength: 20
+          enum: [Diesel, Gasoline, Electric, Hybrid]
+        acquisitionDate:
+          type: string
+          format: date-time
+          nullable: true
+        purchasePrice:
+          type: number
+          format: decimal
+          nullable: true
+        currentDriverId:
+          type: integer
+          nullable: true
+        createdDate:
+          type: string
+          format: date-time
+          readOnly: true
+        modifiedDate:
+          type: string
+          format: date-time
+          nullable: true
+          readOnly: true
+        createdBy:
+          type: string
+          maxLength: 50
+        modifiedBy:
+          type: string
+          maxLength: 50
+
+    GPSPosition:
+      type: object
+      properties:
+        positionId:
+          type: integer
+          format: int64
+          readOnly: true
+        vehicleId:
+          type: integer
+        latitude:
+          type: number
+          format: decimal
+        longitude:
+          type: number
+          format: decimal
+        speed:
+          type: number
+          format: decimal
+          nullable: true
+        heading:
+          type: number
+          format: decimal
+          nullable: true
+        altitude:
+          type: number
+          format: decimal
+          nullable: true
+        timestamp:
+          type: string
+          format: date-time
+        satellites:
+          type: integer
+          nullable: true
+        gpsQuality:
+          type: string
+          maxLength: 20
+        createdDate:
+          type: string
+          format: date-time
+          readOnly: true
+
+    Geofence:
+      type: object
+      required: [name, polygon]
+      properties:
+        geofenceId:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        fleetId:
+          type: integer
+        polygon:
+          type: string
+          maxLength: 4000
+          description: GeoJSON polygon definition
+        alertType:
+          type: string
+          maxLength: 50
+          enum: [Entry, Exit, Both]
+        isActive:
+          type: boolean
+        description:
+          type: string
+          maxLength: 500
+        createdDate:
+          type: string
+          format: date-time
+          readOnly: true
+        modifiedDate:
+          type: string
+          format: date-time
+          nullable: true
+          readOnly: true
+
+    FuelTransaction:
+      type: object
+      properties:
+        transactionId:
+          type: integer
+          readOnly: true
+        vehicleId:
+          type: integer
+        driverId:
+          type: integer
+          nullable: true
+        fuelCardId:
+          type: integer
+        gallons:
+          type: number
+          format: decimal
+        amount:
+          type: number
+          format: decimal
+        pricePerGallon:
+          type: number
+          format: decimal
+        location:
+          type: string
+          maxLength: 200
+        city:
+          type: string
+          maxLength: 100
+        state:
+          type: string
+          maxLength: 50
+        transactionDate:
+          type: string
+          format: date-time
+        odometerReading:
+          type: integer
+          nullable: true
+        authorizationCode:
+          type: string
+          maxLength: 50
+        status:
+          type: string
+          maxLength: 20
+          enum: [Approved, Pending, Declined, Flagged]
+        createdDate:
+          type: string
+          format: date-time
+          readOnly: true
+
+    MaintenanceSchedule:
+      type: object
+      required: [serviceType]
+      properties:
+        scheduleId:
+          type: integer
+          readOnly: true
+        vehicleId:
+          type: integer
+        serviceType:
+          type: string
+          maxLength: 100
+          description: "Type of maintenance: OilChange, TireRotation, BrakeInspection, etc."
+        intervalMiles:
+          type: integer
+          nullable: true
+          description: Miles between services
+        intervalDays:
+          type: integer
+          nullable: true
+          description: Days between services
+        lastServiceDate:
+          type: string
+          format: date-time
+          nullable: true
+        lastServiceMileage:
+          type: integer
+          nullable: true
+        nextServiceDate:
+          type: string
+          format: date-time
+          nullable: true
+        nextServiceMileage:
+          type: integer
+          nullable: true
+        status:
+          type: string
+          maxLength: 20
+          enum: [Active, Completed, Overdue, Cancelled]
+        createdDate:
+          type: string
+          format: date-time
+          readOnly: true
+        modifiedDate:
+          type: string
+          format: date-time
+          nullable: true
+          readOnly: true
+
+    WorkOrder:
+      type: object
+      required: [type]
+      properties:
+        workOrderId:
+          type: integer
+          readOnly: true
+        vehicleId:
+          type: integer
+        type:
+          type: string
+          maxLength: 100
+          enum: [Repair, Inspection, Recall, Modification]
+        priority:
+          type: string
+          maxLength: 20
+          enum: [Low, Medium, High, Critical]
+        status:
+          type: string
+          maxLength: 20
+          enum: [Open, InProgress, Completed, Cancelled]
+        description:
+          type: string
+          maxLength: 1000
+        assignedToVendorId:
+          type: integer
+          nullable: true
+        createdDate:
+          type: string
+          format: date-time
+          readOnly: true
+        scheduledDate:
+          type: string
+          format: date-time
+          nullable: true
+        completedDate:
+          type: string
+          format: date-time
+          nullable: true
+        estimatedCost:
+          type: number
+          format: decimal
+          nullable: true
+        actualCost:
+          type: number
+          format: decimal
+          nullable: true
+        odometerReading:
+          type: integer
+          nullable: true
+        notes:
+          type: string
+          maxLength: 2000
+
+    DutyStatusRequest:
+      type: object
+      properties:
+        dutyStatus:
+          type: string
+          description: "HOS duty status"
+          enum: [OffDuty, SleeperBerth, Driving, OnDuty]
+        vehicleId:
+          type: integer
+          nullable: true
+        latitude:
+          type: number
+          format: decimal
+          nullable: true
+        longitude:
+          type: number
+          format: decimal
+          nullable: true
+        remarks:
+          type: string
+
+    ServiceCompletionRequest:
+      type: object
+      required: [serviceDate, serviceMileage]
+      properties:
+        serviceDate:
+          type: string
+          format: date-time
+        serviceMileage:
+          type: integer
+
+    WorkOrderCompletionRequest:
+      type: object
+      required: [actualCost]
+      properties:
+        actualCost:
+          type: number
+          format: decimal
+        notes:
+          type: string
+
+    # ── WCF Data Contracts ─────────────────────────────────────────────────
+    VehicleTelematicsData:
+      type: object
+      description: "[WCF DataContract] Telematics payload sent by vehicle tracking devices"
+      properties:
+        vehicleId:
+          type: integer
+        latitude:
+          type: number
+          format: decimal
+        longitude:
+          type: number
+          format: decimal
+        speed:
+          type: number
+          format: decimal
+          nullable: true
+        heading:
+          type: number
+          format: decimal
+          nullable: true
+        timestamp:
+          type: string
+          format: date-time
+        odometerReading:
+          type: integer
+          nullable: true
+          description: Only updates vehicle record if greater than current value
+        fuelLevel:
+          type: number
+          format: decimal
+          nullable: true
+        engineTemperature:
+          type: number
+          format: decimal
+          nullable: true
+        ignitionOn:
+          type: boolean
+
+    VehicleStatus:
+      type: object
+      description: "[WCF DataContract] Vehicle status with last known position"
+      properties:
+        vehicleId:
+          type: integer
+        status:
+          type: string
+        lastKnownLatitude:
+          type: number
+          format: decimal
+          nullable: true
+        lastKnownLongitude:
+          type: number
+          format: decimal
+          nullable: true
+        lastContactTime:
+          type: string
+          format: date-time
+          nullable: true
+        isOnline:
+          type: boolean
+          description: "True if last contact was within 15 minutes"
+
+    VehicleCommand:
+      type: object
+      description: "[WCF DataContract] Command to send to a vehicle's telematics device"
+      properties:
+        commandType:
+          type: string
+          description: "Command type: DisableEngine, LockDoors, FlashLights, Honk, etc."
+        parameters:
+          type: string
+          description: Command-specific parameters
+        issueTime:
+          type: string
+          format: date-time

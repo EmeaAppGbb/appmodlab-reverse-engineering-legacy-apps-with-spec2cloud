@@ -1,0 +1,29 @@
+Now let me also look at the entity models to properly document schemas.
+
+Now I have all the source code. Let me generate the OpenAPI spec.
+
+Let me validate the YAML syntax:
+
+YAML is valid. Let me clean up the installed package:
+
+`API-CONTRACTS.yaml` has been created at the repo root. Here's a summary of what's documented:
+
+**8 REST API Controllers (39 endpoints total):**
+| Controller | Endpoints | Key Operations |
+|---|---|---|
+| **Drivers** | 4 | CRUD with auto-status/timestamps |
+| **Vehicles** | 11 | CRUD, driver assignment, health/utilization/cost reports, soft-delete |
+| **Fleets** | 4 | CRUD with auto-status/timestamps |
+| **GPS** | 3 | Record positions, history query (default 24h), latest position |
+| **Geofences** | 7 | CRUD, containment check, fleet violation alerts |
+| **Fuel** | 5 | Transaction processing, suspicious detection, efficiency, fleet cost |
+| **Maintenance** | 9 | Schedules + work orders CRUD, completion workflows, overdue tracking |
+| **Compliance** | 5 | HOS compliance check, remaining hours, violations, duty status recording |
+
+**3 WCF Operations (ITelematicsService):**
+- `ReceiveVehicleData` ÔÇö ingest telematics with monotonic odometer updates
+- `GetVehicleStatus` ÔÇö status + position with 15-min online threshold
+- `SendCommand` ÔÇö remote vehicle command dispatch
+
+Each endpoint includes HTTP method, route, request/response schemas, status codes, and business rules derived from the controller source code.
+
