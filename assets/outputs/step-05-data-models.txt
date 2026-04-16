@@ -1,0 +1,10 @@
+Now let me read all entity files and the repository pattern:
+
+`DATA-MODEL-SPEC.md` created at the repo root. It documents:
+
+1. **10 entity types** with all properties, CLR types, constraints, and status enums
+2. **11 one-to-many relationships** with FK mappings and nullability, plus 2 orphaned FKs (`FuelCardId`, `AssignedToVendorId`)
+3. **12 Fluent API precision configs** (currency at 18,2; GPS coords at 18,8; volumes at 18,3) and notes on absent configurations (no indexes, no unique constraints)
+4. **Generic `Repository<T>`** (8 CRUD methods, all synchronous, no `IQueryable` exposure) and **`UnitOfWork`** (no repository caching, no transaction management, no async)
+5. **Full Mermaid ER diagram** showing all entities and their relationships
+
