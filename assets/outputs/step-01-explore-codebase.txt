@@ -1,0 +1,73 @@
+Let me read the key files directly while the agent finishes.
+
+Here's the full analysis of the **TransFleet** legacy codebase:
+
+---
+
+## ­ƒôª Solution: 5 Projects, all targeting **.NET Framework 4.7.2**
+
+| Project | Type | Key Dependencies | References |
+|---|---|---|---|
+| **TransFleet.Core** | Class Library (C# 8.0) | EF 6.4.4, Newtonsoft.Json 12.0.3 | ÔåÆ Data |
+| **TransFleet.Data** | Class Library (C# 8.0) | EF 6.4.4 | *(none)* |
+| **TransFleet.WebApi** | ASP.NET Web (C# 7.3) | Web API 5.2.7, OWIN 4.2, Autofac 4.9.4, SignalR 2.4.1, Swashbuckle 5.6.0 | ÔåÆ Core, Data |
+| **TransFleet.WcfServices** | Web/Library (C# 7.3) | System.ServiceModel.Http 4.9.0 | ÔåÆ Core, Data |
+| **TransFleet.Jobs** | Class Library (C# 7.3) | Hangfire 1.7.28, Quartz 3.3.3 | ÔåÆ Core, Data |
+
+### Dependency Graph
+```
+WebApi ÔöÇÔöÇÔöÉ
+WcfSvc ÔöÇÔöÇÔö╝ÔöÇÔöÇÔû║ Core ÔöÇÔöÇÔû║ Data
+Jobs ÔöÇÔöÇÔöÇÔöÇÔöÿ
+```
+
+---
+
+## ­ƒôü Source Files (44 .cs files)
+
+### TransFleet.Data ÔÇö Data Access Layer (14 files)
+- **`TransFleetDbContext`** ÔÇö EF6 DbContext
+- **`Repository<T>`** ÔÇö Generic repository (Find/Add/Update/Remove)
+- **`UnitOfWork`** ÔÇö Transaction coordination
+- **11 Entities**: Vehicle, Driver, Fleet, Client, MaintenanceSchedule, FuelTransaction, GPSPosition, HOSLog, Geofence, WorkOrder
+
+### TransFleet.Core ÔÇö Business Logic Layer (17 files)
+- **6 Services** (500ÔÇô1200+ lines each): VehicleService, DriverService, ComplianceService, FuelService, MaintenanceService, GeofenceService
+- **3 Domain Rules**: DOTComplianceRules, MaintenanceRules, FuelCardValidationRules
+- **3 Value Objects**: Money, Distance, Duration
+- **3 Specifications**: Specification\<T\> base + Vehicle/Driver specifications
+- **2 Integration Adapters**: FuelCardAdapter (WCF), DOTReportingAdapter (FMCSA ELD)
+
+### TransFleet.WebApi ÔÇö REST API (8 controllers)
+- Vehicles, Drivers, Fleets, Compliance, Fuel, Maintenance, Geofences, GPS
+
+### TransFleet.WcfServices ÔÇö Legacy SOAP (2 files)
+- `ITelematicsService` / `TelematicsService` ÔÇö bidirectional vehicle telematics (GPS ingest, status query, remote commands)
+
+### TransFleet.Jobs ÔÇö Background Processing (3 files)
+- MaintenanceAlertJob (6-hour cycle), ComplianceCheckJob (daily), DataArchivalJob (90-day archive)
+
+---
+
+## ­ƒÅù´©Å Architecture & Design Patterns
+- **Layered Architecture**: Controllers ÔåÆ Services ÔåÆ Repository/UoW ÔåÆ EF6 ÔåÆ SQL Server
+- **Repository + Unit of Work** pattern for data access
+- **Specification Pattern** with And/Or/Not combinators
+- **Value Objects** for domain concepts (Money, Distance, Duration)
+- **Adapter Pattern** for external integrations (fuel cards, DOT reporting)
+- **DI** via Autofac in WebApi
+
+## ÔÜá´©Å Complexity Summary
+| Factor | Detail |
+|---|---|
+| **God classes** | VehicleService has 20+ business rules, 500+ lines |
+| **Deep call chains** | Vehicle assignment ÔåÆ driver check ÔåÆ license ÔåÆ compliance |
+| **WCF legacy** | SOAP services with DataContracts for telematics |
+| **Business rules in code** | DOT HOS regulations hardcoded (11h driving, 14h window, 60/70h weekly) |
+| **High-volume data** | GPS positions: 100M+ rows in production |
+| **Mixed abstractions** | Repository pattern + direct EF6 queries |
+| **XML config** | Web.config for connection strings and service endpoints |
+| **No tests** | No test project in the solution |
+
+This is a classic enterprise .NET Framework monolith ÔÇö a good candidate for modernization to .NET 8+, with microservices decomposition along the natural bounded contexts (Vehicles, Compliance, Fuel, Maintenance, Telematics).
+
