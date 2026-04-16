@@ -1,0 +1,14 @@
+Now I have a thorough understanding of both source documents. Let me create the detailed migration plan.
+
+Now let me validate the file was created correctly and commit it.
+
+Created and committed `MIGRATION-PLAN.md` (830 lines). The plan covers:
+
+1. **20 sprints** across 7 phases (40 weeks) with specific tasks, owners, and acceptance criteria per sprint
+2. **Priority matrix** scoring business value ├ù technical risk ÔÇö security first, then critical bugs, then low-risk services before high-risk ones
+3. **Dependency map** showing service extraction order (Driver ÔåÆ Maintenance ÔåÆ Fuel ÔåÆ Compliance ÔåÆ Telematics ÔåÆ Geofence ÔåÆ Vehicle)
+4. **Rollback strategies** per phase using Strangler Fig + APIM routing (< 1 min rollback), with automatic triggers at 1% error rate
+5. **Testing pyramid** ÔÇö unit (50%), integration (30%), contract/Pact (15%), E2E (5%) with specific frameworks and coverage targets
+6. **GPS data migration** ÔÇö 5-tier approach (dual-write ÔåÆ backfill hot/warm/cold ÔåÆ validate ÔåÆ cutover ÔåÆ observe 30 days)
+7. **8 milestones** from "Hardened Monolith" (Week 6) to "Monolith Decommissioned" (Week 40)
+
