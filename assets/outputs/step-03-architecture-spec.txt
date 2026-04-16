@@ -1,0 +1,21 @@
+Exploring all 5 projects and existing documentation in parallel. Will compile the architecture spec once results arrive.
+
+Let me check the Core project directly while the agent finishes.
+
+Now I have comprehensive understanding of the entire codebase. Let me create the architecture specification document.
+
+
+
+Now let me commit the file.
+
+`ARCHITECTURE-SPEC.md` has been created and committed (865 lines). The document covers all 6 requested sections:
+
+1. **System Context Diagram** ÔÇö External integrations with DOT/FMCSA, fuel card processor, and telematics devices, including interface details and endpoint configurations
+2. **Container Diagram** ÔÇö All 5 projects with dependency graph and responsibility descriptions
+3. **Component Diagram for TransFleet.Core** ÔÇö Services (6), domain rules (3 static classes), specifications (10 composable predicates), value objects (3), and integration adapters (2)
+4. **Technology Stack** ÔÇö Detailed version matrix per layer including EF6 precision configs and data access patterns
+5. **Communication Patterns** ÔÇö Complete REST endpoint table (30+ endpoints), WCF/SOAP contracts, and background job schedules
+6. **Data Flow Descriptions** ÔÇö Sequence diagrams for vehicle-driver assignment, fuel transaction processing, DOT compliance checking, telematics ingestion, and maintenance lifecycle
+
+Also includes the domain model ERD and a technical debt inventory derived from actual source analysis.
+
