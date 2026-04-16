@@ -23,55 +23,55 @@ The following screenshots document the TransFleet legacy application structure, 
 ### Project Structure
 The solution contains 5 projects targeting .NET Framework 4.7.2 with SDK-style csproj files.
 
-```
-See: assets/screenshots/01-project-structure.txt
-```
+[View: Project Structure](assets/screenshots/01-project-structure.txt)
+
+*Open the text file to view the full project tree and file listing.*
 
 ### Build Output
 The solution compiles successfully with `dotnet build` after NuGet restore (5 DLLs produced).
 
-```
-See: assets/screenshots/02-build-output.txt
-```
+[View: Build Output](assets/screenshots/02-build-output.txt)
+
+*Open the text file to view the complete build log.*
 
 ### VehicleService — Business Logic Overview
 The core "god service" with ~500 lines, 20+ business rules, and complex validation chains.
 
-```
-See: assets/screenshots/03-vehicle-service-overview.txt
-```
+[View: VehicleService Overview](assets/screenshots/03-vehicle-service-overview.txt)
+
+*Open the text file to view the full service analysis and business rule inventory.*
 
 ### WCF Telematics Contract
 Legacy WCF service interface for vehicle telemetry ingestion and remote commands.
 
-```
-See: assets/screenshots/04-wcf-telematics-contract.txt
-```
+[View: WCF Telematics Contract](assets/screenshots/04-wcf-telematics-contract.txt)
+
+*Open the text file to view the complete WCF contract definition.*
 
 ### Data Model Overview
 Entity Framework 6 DbContext with 10 entity types and complex relationship mapping.
 
-```
-See: assets/screenshots/05-data-model-overview.txt
-```
+[View: Data Model Overview](assets/screenshots/05-data-model-overview.txt)
+
+*Open the text file to view the entity relationships and DbContext configuration.*
 
 ### Architecture Layers
 Layered architecture: WebApi → Core (services/domain/specs) → Data (EF6) + WcfServices + Jobs.
 
-```
-See: assets/screenshots/06-architecture-layers.txt
-```
+[View: Architecture Layers](assets/screenshots/06-architecture-layers.txt)
+
+*Open the text file to view the full layered architecture diagram.*
 
 ### REST API Endpoints
 8 Web API controllers exposing fleet management, compliance, fuel, and maintenance endpoints.
 
-```
-See: assets/screenshots/07-api-endpoints.txt
-```
+[View: REST API Endpoints](assets/screenshots/07-api-endpoints.txt)
+
+*Open the text file to view the complete endpoint inventory.*
 
 ### Spec2Cloud Reverse Engineering Workflow
 The 9-phase investigation process from codebase exploration to modernization blueprint.
 
-```
-See: assets/screenshots/08-spec2cloud-workflow.txt
-```
+[View: Spec2Cloud Workflow](assets/screenshots/08-spec2cloud-workflow.txt)
+
+*Open the text file to view the full reverse-engineering workflow phases.*
